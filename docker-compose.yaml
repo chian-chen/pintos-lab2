@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  pintos:
+    image: davidchen871/pintos
+    container_name: pintos_lab2
+    stdin_open: true  
+    tty: true         
+    restart: no       
+    volumes:
+    -  /home/os/lab2/pintos:/home/pintos
+    environment:
+      - PINTOS_DIR=/home/pintos
