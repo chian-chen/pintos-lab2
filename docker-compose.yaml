@@ -8,6 +8,6 @@ services:
     tty: true         
     restart: no       
     volumes:
-    -  /home/os/lab2/pintos:/home/pintos
+    -  /home/os/lab2/pintos-lab2:/home/pintos
     environment:
       - PINTOS_DIR=/home/pintos
