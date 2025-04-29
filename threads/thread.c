@@ -267,11 +267,9 @@ thread_block (void)
 void
 thread_unblock (struct thread *t) 
 {
-  enum intr_level old_level;
-
   ASSERT (is_thread (t));
 
-  old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered (&ready_list, &t->elem,
     priority_cmp, NULL);
@@ -375,8 +373,16 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  thread_yield();
+  enum intr_level old_level = intr_disable ();
+  struct thread *cur = thread_current ();
+
+  cur->original_priority = new_priority;
+  if (new_priority > cur->priority || list_empty (&cur->holding_locks)){
+    cur->priority = new_priority;
+    thread_yield();
+  }
+
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -504,6 +510,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->original_priority = priority;
   t->priority = priority;
+  list_init(&t->holding_locks);
+  t->waiting_lock = NULL;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -631,37 +639,16 @@ void donate_priority (struct thread *donor, struct thread *holder) {
 
     if (holder->waiting_lock != NULL && 
         holder->waiting_lock->holder != NULL) {
-      donate_priority(donor, holder->waiting_lock->holder);
+      if(donor->priority > holder->waiting_lock->lock_priority) {
+        holder->waiting_lock->lock_priority = donor->priority;
+        donate_priority(donor, holder->waiting_lock->holder);
+      }
     }
 
-    list_remove (&holder->elem);
-    list_insert_ordered (&ready_list, &holder->elem,
-                        priority_cmp, NULL);
+    if(holder->status == THREAD_READY){
+      list_remove (&holder->elem);
+      list_insert_ordered (&ready_list, &holder->elem,
+                          priority_cmp, NULL);
+    }
   }
-}
-
-void
-check_priority (void) 
-{
-  enum intr_level old_level = intr_disable ();
-
-  if (!list_empty (&ready_list)) 
-    {
-      struct thread *first =
-        list_entry (list_front (&ready_list), struct thread, elem);
-
-      if (first->priority > thread_current()-> priority) 
-        {
-          if (intr_context ())
-            intr_yield_on_return ();
-          else
-            {
-              intr_set_level (old_level);
-              thread_yield ();
-              return;
-            }
-        }
-    }
-
-  intr_set_level (old_level);
 }

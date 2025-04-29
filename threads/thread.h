@@ -87,7 +87,7 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority. (may be changed) */
     int original_priority;              /* Original priority. */
     
     struct list holding_locks;
@@ -144,7 +144,7 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+/* My function to help priority donation */
 void donate_priority (struct thread *donor, struct thread *holder);
-void check_priority (void);
 
 #endif /* threads/thread.h */
