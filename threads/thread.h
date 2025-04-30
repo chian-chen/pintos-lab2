@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/fixed-point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -99,6 +100,9 @@ struct thread
     struct list_elem elem;              /* List element. */
     int64_t wakeup_time;              /* Time to wake up. */
 
+    fp recent_cpu;                /* Recent CPU time. */
+    int nice;                  /* Nice value. */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -146,5 +150,9 @@ int thread_get_load_avg (void);
 
 /* My function to help priority donation */
 void donate_priority (struct thread *donor, struct thread *holder);
+
+/* My function to handle mlfqs */
+void mlfps_update_curr_priority(void);
+void mlfps_update_all_priority(void);
 
 #endif /* threads/thread.h */

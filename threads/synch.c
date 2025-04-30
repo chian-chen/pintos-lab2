@@ -228,6 +228,12 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  if(thread_mlfqs){
+    sema_down (&lock->semaphore);
+    struct thread * cur = thread_current ();
+    lock->holder = cur;
+    return;
+  }
   /* If the lock is already held by another thread, we need to
      donate our priority to that thread. (recursively) */
   struct thread * cur = thread_current ();
@@ -283,6 +289,12 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
+  if(thread_mlfqs){
+    lock->holder = NULL;
+    sema_up (&lock->semaphore);
+    return;
+  }
+  
   enum intr_level old_level = intr_disable ();
 
   lock->holder = NULL;
