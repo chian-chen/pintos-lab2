@@ -37,6 +37,16 @@ priority_cmp (const struct list_elem *a,
   return A->priority > B->priority;  
 }
 
+static bool
+thread_wakeup_cmp (const struct list_elem *a,
+                    const struct list_elem *b,
+                    void *aux UNUSED)
+{
+  struct thread *A = list_entry (a, struct thread, sleep_elem);
+  struct thread *B = list_entry (b, struct thread, sleep_elem);
+  return A->wakeup_time < B->wakeup_time;
+}
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -85,6 +95,7 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 static void thread_wakeup (struct thread *t, void *aux);
+static void try_wakeup_threads(int64_t current_time);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -164,23 +175,31 @@ thread_tick (void)
   /* Check if any sleep thread can unblock */
   enum intr_level old_level = intr_disable();
   int64_t current_time = timer_ticks();
-  thread_foreach (thread_wakeup, &current_time);
+  try_wakeup_threads(current_time);
   intr_set_level(old_level);
 }
 
 
-/* Wakes up the thread if its wakeup time is less than or equal to
-   the current time. */
-void
-thread_wakeup (struct thread *t, void *aux) 
-{
-  int64_t current_time = *(int64_t *) aux;
-  if (t-> status == THREAD_BLOCKED && t->wakeup_time != 0 && t->wakeup_time <= current_time) 
+void put_to_sleep(struct thread* t){
+  list_insert_ordered (&sleep_list, &t->sleep_elem,
+    (list_less_func *) &thread_wakeup_cmp, NULL);
+}
+
+void try_wakeup_threads(int64_t current_time){
+  while (!list_empty (&sleep_list))
     {
-      t->wakeup_time = 0; // Reset wakeup time
+      struct list_elem *e = list_front (&sleep_list);
+      struct thread *t = list_entry (e, struct thread, sleep_elem);
+      if (t->wakeup_time > current_time)
+        break;
+      list_pop_front (&sleep_list);
+      t->wakeup_time = 0;
       thread_unblock (t);
+      if (t->priority > thread_current()->priority)
+        intr_yield_on_return();
     }
 }
+
 /* Prints thread statistics. */
 void
 thread_print_stats (void) 
@@ -282,7 +301,6 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered (&ready_list, &t->elem,
     priority_cmp, NULL);
-  // list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }

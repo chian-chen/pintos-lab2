@@ -296,13 +296,12 @@ lock_release (struct lock *lock)
   }
   
   enum intr_level old_level = intr_disable ();
-
   lock->holder = NULL;
   list_remove (&lock->elem);
 
   // /* update priority based on current holding lock */
   struct thread * cur = thread_current ();
-  int new_priority = cur->original_priority; // not finish yet......
+  int new_priority = cur->original_priority;
 
   /* max(lock_priority, base_priority) */
   struct list_elem *e;

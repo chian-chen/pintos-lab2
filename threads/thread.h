@@ -98,6 +98,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list_elem sleep_elem;        /* List element for sleep list. */ 
     int64_t wakeup_time;              /* Time to wake up. */
 
     fp recent_cpu;                /* Recent CPU time. */
@@ -154,5 +155,8 @@ void donate_priority (struct thread *donor, struct thread *holder);
 /* My function to handle mlfqs */
 void mlfps_update_curr_priority(void);
 void mlfps_update_all_priority(void);
+
+/* My function to handle sleep */
+void put_to_sleep(struct thread* t);
 
 #endif /* threads/thread.h */
